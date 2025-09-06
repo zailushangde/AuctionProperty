@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     
     # Database
     database_url: str = Field(
-        default="postgresql+asyncpg://postgres:password@localhost:5432/auction_db",
+        default="postgresql://postgres:[YOUR-PASSWORD]@db.hwyuvjamgcawjcpsitrj.supabase.co:5432/postgres",
         description="PostgreSQL database URL"
     )
     

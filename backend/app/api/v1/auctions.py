@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.database import get_db
 from app.models import Auction, Publication, AuctionObject
-from app.schemas.auction import AuctionResponse, AuctionList
+from app.schemas.auction import AuctionBasicResponse, AuctionList
 from app.api.dependencies import PaginationParams, get_total_count
 
 router = APIRouter(prefix="/auctions", tags=["auctions"])
@@ -91,7 +91,7 @@ async def list_auctions(
     )
 
 
-@router.get("/{auction_id}", response_model=AuctionResponse)
+@router.get("/{auction_id}", response_model=AuctionBasicResponse)
 async def get_auction(
     auction_id: str,
     db: AsyncSession = Depends(get_db)

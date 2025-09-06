@@ -1,16 +1,16 @@
-"""Publication model for SHAB publications."""
+"""Publication model for SHAB publications (Internal Reference Only)."""
 
 import uuid
-from datetime import datetime
-from typing import List, Optional
-from sqlalchemy import String, DateTime, Text, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from datetime import datetime, date
+from typing import List, Optional, Dict, Any
+from sqlalchemy import String, DateTime, Date, Text, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 
 class Publication(Base):
-    """Model for SHAB publications containing auction information."""
+    """Model for SHAB publications (Internal Reference Only - Not exposed to frontend)."""
     
     __tablename__ = "publications"
     
@@ -23,32 +23,34 @@ class Publication(Base):
     )
     
     # SHAB specific fields
-    publication_date: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
+    publication_date: Mapped[date] = mapped_column(
+        Date,
         nullable=False,
         index=True
     )
-    title: Mapped[str] = mapped_column(
-        String(500),
-        nullable=False,
+    expiration_date: Mapped[Optional[date]] = mapped_column(
+        Date,
+        nullable=True,
         index=True
+    )
+    title: Mapped[Dict[str, str]] = mapped_column(
+        JSONB,
+        nullable=False,
+        comment="Multilingual titles: {de: 'German', fr: 'French', it: 'Italian', en: 'English'}"
     )
     language: Mapped[str] = mapped_column(
         String(10),
         nullable=False,
-        default="de"
+        default="de",
+        index=True
     )
     canton: Mapped[str] = mapped_column(
         String(10),
         nullable=False,
         index=True
     )
-    registration_office: Mapped[str] = mapped_column(
-        String(200),
-        nullable=False
-    )
     
-    # Content
+    # Content (for internal processing)
     content: Mapped[Optional[str]] = mapped_column(
         Text,
         nullable=True
@@ -67,7 +69,7 @@ class Publication(Base):
         nullable=False
     )
     
-    # Relationships
+    # Relationships (Internal only - not exposed to frontend)
     auctions: Mapped[List["Auction"]] = relationship(
         "Auction",
         back_populates="publication",
@@ -85,4 +87,5 @@ class Publication(Base):
     )
     
     def __repr__(self) -> str:
-        return f"<Publication(id={self.id}, title='{self.title[:50]}...', date={self.publication_date})>"
+        title_preview = self.title.get('de', 'No title')[:50] if isinstance(self.title, dict) else str(self.title)[:50]
+        return f"<Publication(id={self.id}, title='{title_preview}...', date={self.publication_date})>"

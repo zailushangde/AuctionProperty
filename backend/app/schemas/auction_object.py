@@ -1,9 +1,9 @@
-"""Pydantic schemas for AuctionObject model."""
+"""Pydantic schemas for AuctionObject model (Premium Content)."""
 
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 
@@ -25,14 +25,46 @@ class AuctionObjectBase(BaseModel):
 class AuctionObjectCreate(AuctionObjectBase):
     """Schema for creating an AuctionObject."""
     auction_id: uuid.UUID
+    latitude: Optional[Decimal] = None
+    longitude: Optional[Decimal] = None
+
+
+class AuctionObjectBasicResponse(BaseModel):
+    """Schema for basic AuctionObject response (Free content)."""
+    id: uuid.UUID
+    parcel_number: Optional[str] = None
+    property_type: Optional[str] = None
+    municipality: Optional[str] = None
+    canton: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
 
 
 class AuctionObjectResponse(AuctionObjectBase):
-    """Schema for AuctionObject response."""
+    """Schema for full AuctionObject response (Premium content)."""
     id: uuid.UUID
     auction_id: uuid.UUID
-    created_at: datetime
-    updated_at: datetime
+    latitude: Optional[Decimal] = None
+    longitude: Optional[Decimal] = None
+    coordinates: Optional[Dict[str, float]] = None  # {lat: float, lng: float}
+    created_at: str
+    updated_at: str
+    
+    class Config:
+        from_attributes = True
+
+
+class AuctionObjectMapResponse(BaseModel):
+    """Schema for AuctionObject map response."""
+    id: uuid.UUID
+    parcel_number: Optional[str] = None
+    property_type: Optional[str] = None
+    estimated_value: Optional[Decimal] = None
+    currency: str = "CHF"
+    coordinates: Optional[Dict[str, float]] = None  # {lat: float, lng: float}
+    municipality: Optional[str] = None
+    canton: Optional[str] = None
     
     class Config:
         from_attributes = True

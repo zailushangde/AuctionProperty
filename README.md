@@ -29,7 +29,7 @@ A comprehensive FastAPI-based backend system for aggregating and processing Swis
 
 ### Prerequisites
 - Python 3.12+
-- PostgreSQL 14+
+- Supabase PostgreSQL Database (configured)
 - Redis 6+
 - Docker & Docker Compose (optional)
 
@@ -53,10 +53,14 @@ A comprehensive FastAPI-based backend system for aggregating and processing Swis
    pip install -r requirements.txt
    ```
 
-4. **Set up environment variables**
+4. **Set up Supabase database configuration**
    ```bash
+   # Run the setup script
+   python setup_supabase.py
+   
+   # Or manually edit .env file with your Supabase password
    cp .env.example .env
-   # Edit .env with your database and Redis configuration
+   # Edit .env and replace [YOUR-PASSWORD] with your actual Supabase password
    ```
 
 5. **Run database migrations**
@@ -182,16 +186,18 @@ AuctionProperty/
 
 ### Environment Variables
 
-Create a `.env` file in the `backend/` directory:
+Create a `.env` file in the `backend/` directory. You can use the provided setup script:
+
+```bash
+# Run the Supabase setup script
+python setup_supabase.py
+```
+
+Or manually create the `.env` file:
 
 ```env
-# Database Configuration
-DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/auction_property
-DATABASE_HOST=localhost
-DATABASE_PORT=5432
-DATABASE_NAME=auction_property
-DATABASE_USER=postgres
-DATABASE_PASSWORD=your_password
+# Database Configuration (Supabase)
+DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@db.hwyuvjamgcawjcpsitrj.supabase.co:5432/postgres
 
 # Redis Configuration
 REDIS_URL=redis://localhost:6379/0

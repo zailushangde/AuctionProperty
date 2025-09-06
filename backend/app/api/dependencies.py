@@ -1,9 +1,10 @@
 """API dependencies for database and authentication."""
 
-from typing import AsyncGenerator
+import uuid
+from typing import AsyncGenerator, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from fastapi import Depends, HTTPException, Query
+from fastapi import Depends, HTTPException, Query, Header
 from app.database import get_db
 from app.models import Publication, Auction, AuctionObject
 
@@ -83,3 +84,25 @@ async def get_total_count(
     
     result = await db.execute(query)
     return result.scalar()
+
+
+async def get_current_user_id(
+    x_user_id: Optional[str] = Header(None, description="User ID from authentication system")
+) -> Optional[uuid.UUID]:
+    """Get current user ID from headers (simplified authentication)."""
+    if not x_user_id:
+        return None
+    
+    try:
+        return uuid.UUID(x_user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid user ID format")
+
+
+async def require_authentication(
+    user_id: Optional[uuid.UUID] = Depends(get_current_user_id)
+) -> uuid.UUID:
+    """Require user to be authenticated."""
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return user_id

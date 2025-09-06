@@ -1,16 +1,16 @@
-"""Auction model for auction events."""
+"""Auction model for auction events (Main Frontend Entity)."""
 
 import uuid
-from datetime import datetime, time as dt_time
-from typing import List, Optional
-from sqlalchemy import String, DateTime, Time, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from datetime import datetime, date, time as dt_time
+from typing import List, Optional, Dict, Any
+from sqlalchemy import String, DateTime, Date, Time, Text, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 
 class Auction(Base):
-    """Model for auction events."""
+    """Model for auction events (Main Frontend Entity)."""
     
     __tablename__ = "auctions"
     
@@ -23,8 +23,8 @@ class Auction(Base):
     )
     
     # Auction details
-    date: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
+    date: Mapped[date] = mapped_column(
+        Date,
         nullable=False,
         index=True
     )
@@ -37,17 +37,27 @@ class Auction(Base):
         nullable=False
     )
     
-    # Additional auction info
-    auction_type: Mapped[Optional[str]] = mapped_column(
-        String(100),
+    # Circulation and Registration deadlines
+    circulation_entry_deadline: Mapped[Optional[date]] = mapped_column(
+        Date,
+        nullable=True,
+        index=True
+    )
+    circulation_comment_deadline: Mapped[Optional[str]] = mapped_column(
+        Text,
         nullable=True
     )
-    court: Mapped[Optional[str]] = mapped_column(
-        String(200),
+    registration_entry_deadline: Mapped[Optional[date]] = mapped_column(
+        Date,
+        nullable=True,
+        index=True
+    )
+    registration_comment_deadline: Mapped[Optional[str]] = mapped_column(
+        Text,
         nullable=True
     )
     
-    # Foreign key to publication
+    # Foreign key to publication (Internal reference only)
     publication_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("publications.id", ondelete="CASCADE"),

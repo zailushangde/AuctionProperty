@@ -1,16 +1,16 @@
-"""Contact model for auction contacts."""
+"""Contact model for auction contacts (Premium Content)."""
 
 import uuid
 from datetime import datetime
-from typing import Optional
-from sqlalchemy import String, DateTime, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from typing import Optional, Dict, Any
+from sqlalchemy import String, DateTime, ForeignKey, Boolean
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 
 class Contact(Base):
-    """Model for auction contacts (court officials, lawyers, etc.)."""
+    """Model for auction contacts (Premium Content)."""
     
     __tablename__ = "contacts"
     
@@ -27,10 +27,6 @@ class Contact(Base):
         String(200),
         nullable=False
     )
-    title: Mapped[Optional[str]] = mapped_column(
-        String(100),
-        nullable=True
-    )
     phone: Mapped[Optional[str]] = mapped_column(
         String(50),
         nullable=True
@@ -39,22 +35,8 @@ class Contact(Base):
         String(200),
         nullable=True
     )
-    fax: Mapped[Optional[str]] = mapped_column(
-        String(50),
-        nullable=True
-    )
     
-    # Organization details
-    organization: Mapped[Optional[str]] = mapped_column(
-        String(200),
-        nullable=True
-    )
-    department: Mapped[Optional[str]] = mapped_column(
-        String(200),
-        nullable=True
-    )
-    
-    # Address
+    # Address information
     address: Mapped[Optional[str]] = mapped_column(
         String(500),
         nullable=True
@@ -71,10 +53,28 @@ class Contact(Base):
     # Contact type/role
     contact_type: Mapped[Optional[str]] = mapped_column(
         String(100),
+        nullable=True,
+        comment="e.g., 'office', 'lawyer', 'court'"
+    )
+    
+    # Office-specific fields
+    office_id: Mapped[Optional[str]] = mapped_column(
+        String(100),
+        nullable=True
+    )
+    contains_post_office_box: Mapped[Optional[bool]] = mapped_column(
+        Boolean,
         nullable=True
     )
     
-    # Foreign key to publication
+    # Post office box information
+    post_office_box: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="Post office box details: {number: '123', zipCode: '1000', town: 'Bern'}"
+    )
+    
+    # Foreign key to publication (Internal reference only)
     publication_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("publications.id", ondelete="CASCADE"),

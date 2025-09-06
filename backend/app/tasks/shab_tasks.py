@@ -9,7 +9,7 @@ from celery import current_task
 
 from app.celery_app import celery_app
 from app.database import AsyncSessionLocal
-from app.models import Publication, Auction, Debtor, AuctionObject, Contact
+from app.models import Publication, Auction, Debtor, AuctionObject, Contact, DebtorType
 from app.parsers import SHABParser
 
 
@@ -96,10 +96,10 @@ async def _process_publication_data(pub_data: Dict[str, Any]):
             publication = Publication(
                 id=pub_data['id'],
                 publication_date=pub_data['publication_date'],
-                title=pub_data['title'],
+                expiration_date=pub_data.get('expiration_date'),
+                title=pub_data['title'],  # Now JSONB for multilingual titles
                 language=pub_data['language'],
                 canton=pub_data['canton'],
-                registration_office=pub_data['registration_office'],
                 content=pub_data.get('content')
             )
             
@@ -113,8 +113,10 @@ async def _process_publication_data(pub_data: Dict[str, Any]):
                     date=auction_data['date'],
                     time=auction_data.get('time'),
                     location=auction_data['location'],
-                    auction_type=auction_data.get('auction_type'),
-                    court=auction_data.get('court'),
+                    circulation_entry_deadline=auction_data.get('circulation', {}).get('entry_deadline'),
+                    circulation_comment_deadline=auction_data.get('circulation', {}).get('comment_entry_deadline'),
+                    registration_entry_deadline=auction_data.get('registration', {}).get('entry_deadline'),
+                    registration_comment_deadline=auction_data.get('registration', {}).get('comment_entry_deadline'),
                     publication_id=publication.id
                 )
                 
@@ -135,6 +137,8 @@ async def _process_publication_data(pub_data: Dict[str, Any]):
                         municipality=obj_data.get('municipality'),
                         canton=obj_data.get('canton'),
                         remarks=obj_data.get('remarks'),
+                        latitude=obj_data.get('latitude'),
+                        longitude=obj_data.get('longitude'),
                         auction_id=auction.id
                     )
                     
@@ -144,9 +148,12 @@ async def _process_publication_data(pub_data: Dict[str, Any]):
             for debtor_data in pub_data.get('debtors', []):
                 debtor = Debtor(
                     id=debtor_data['id'],
+                    debtor_type=DebtorType(debtor_data.get('debtor_type', 'person')),
                     name=debtor_data['name'],
                     prename=debtor_data.get('prename'),
                     date_of_birth=debtor_data.get('date_of_birth'),
+                    country_of_origin=debtor_data.get('country_of_origin'),
+                    residence_type=debtor_data.get('residence', {}).get('select_type'),
                     address=debtor_data.get('address'),
                     city=debtor_data.get('city'),
                     postal_code=debtor_data.get('postal_code'),
@@ -161,16 +168,15 @@ async def _process_publication_data(pub_data: Dict[str, Any]):
                 contact = Contact(
                     id=contact_data['id'],
                     name=contact_data['name'],
-                    title=contact_data.get('title'),
                     phone=contact_data.get('phone'),
                     email=contact_data.get('email'),
-                    fax=contact_data.get('fax'),
-                    organization=contact_data.get('organization'),
-                    department=contact_data.get('department'),
                     address=contact_data.get('address'),
                     city=contact_data.get('city'),
                     postal_code=contact_data.get('postal_code'),
                     contact_type=contact_data.get('contact_type'),
+                    office_id=contact_data.get('office_id'),
+                    contains_post_office_box=contact_data.get('contains_post_office_box'),
+                    post_office_box=contact_data.get('post_office_box'),
                     publication_id=publication.id
                 )
                 
@@ -223,6 +229,73 @@ async def _cleanup_expired_data():
         except Exception as e:
             await db.rollback()
             raise e
+
+
+@celery_app.task
+def geocode_auction_locations():
+    """Geocode auction locations for map integration."""
+    
+    try:
+        import asyncio
+        return asyncio.run(_geocode_auction_locations())
+    except Exception as e:
+        print(f"Error in geocoding task: {e}")
+        raise
+
+
+async def _geocode_auction_locations():
+    """Geocode auction locations that don't have coordinates."""
+    
+    async with AsyncSessionLocal() as db:
+        try:
+            # Find auction objects without coordinates
+            query = select(AuctionObject).where(
+                and_(
+                    AuctionObject.latitude.is_(None),
+                    AuctionObject.longitude.is_(None),
+                    AuctionObject.address.isnot(None)
+                )
+            ).limit(100)  # Process in batches
+            
+            result = await db.execute(query)
+            objects_to_geocode = result.scalars().all()
+            
+            geocoded_count = 0
+            for obj in objects_to_geocode:
+                try:
+                    # Simple geocoding - in production, use a proper geocoding service
+                    coordinates = await _geocode_address(obj.address, obj.municipality, obj.canton)
+                    if coordinates:
+                        obj.latitude = coordinates['lat']
+                        obj.longitude = coordinates['lng']
+                        geocoded_count += 1
+                except Exception as e:
+                    print(f"Error geocoding {obj.address}: {e}")
+                    continue
+            
+            await db.commit()
+            
+            return {
+                'status': 'completed',
+                'geocoded_objects': geocoded_count,
+                'total_processed': len(objects_to_geocode)
+            }
+            
+        except Exception as e:
+            await db.rollback()
+            raise e
+
+
+async def _geocode_address(address: str, municipality: str, canton: str) -> dict:
+    """Geocode an address (placeholder implementation)."""
+    
+    # This is a placeholder - in production, you would use:
+    # - Google Geocoding API
+    # - OpenStreetMap Nominatim
+    # - Swiss Federal Office of Topography API
+    
+    # For now, return None to indicate no geocoding
+    return None
 
 
 @celery_app.task
