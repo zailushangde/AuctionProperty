@@ -82,8 +82,26 @@ async def list_auctions(
     # Calculate pages
     pages = (total + pagination.size - 1) // pagination.size
     
+    # Convert SQLAlchemy objects to dicts for proper serialization
+    auction_items = []
+    for auction in auctions:
+        auction_dict = {
+            'id': auction.id,
+            'date': auction.date,
+            'time': auction.time,
+            'location': auction.location,
+            'circulation_entry_deadline': auction.circulation_entry_deadline,
+            'circulation_comment_deadline': auction.circulation_comment_deadline,
+            'registration_entry_deadline': auction.registration_entry_deadline,
+            'registration_comment_deadline': auction.registration_comment_deadline,
+            'created_at': auction.created_at.isoformat() if auction.created_at else None,
+            'updated_at': auction.updated_at.isoformat() if auction.updated_at else None,
+            'auction_objects': []  # Will be populated separately if needed
+        }
+        auction_items.append(auction_dict)
+    
     return AuctionList(
-        items=auctions,
+        items=auction_items,
         total=total,
         page=pagination.page,
         size=pagination.size,
@@ -91,29 +109,60 @@ async def list_auctions(
     )
 
 
-@router.get("/{auction_id}", response_model=AuctionBasicResponse)
+@router.get("/{auction_id}")
 async def get_auction(
     auction_id: str,
     db: AsyncSession = Depends(get_db)
 ):
     """Get detailed auction information."""
     
-    # Get auction with related data
+    # Get auction
     result = await db.execute(
         select(Auction)
         .where(Auction.id == auction_id)
-        .options(
-            # Load related objects
-            selectinload(Auction.auction_objects),
-            selectinload(Auction.publication)
-        )
     )
     auction = result.scalar_one_or_none()
     
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
     
-    return auction
+    # Get auction objects separately
+    objects_result = await db.execute(
+        select(AuctionObject)
+        .where(AuctionObject.auction_id == auction_id)
+    )
+    auction_objects = objects_result.scalars().all()
+    
+    # Manually serialize datetime fields and related objects to avoid Pydantic validation errors
+    auction_objects_list = []
+    for obj in auction_objects:
+        auction_objects_list.append({
+            'id': obj.id,
+            'description': obj.description,
+            'estimated_value': obj.estimated_value,
+            'currency': obj.currency,
+            'coordinates': obj.coordinates,
+            'parcel_number': obj.parcel_number,
+            'property_type': obj.property_type,
+            'municipality': obj.municipality,
+            'canton': obj.canton
+        })
+    
+    auction_dict = {
+        'id': auction.id,
+        'date': auction.date,
+        'time': auction.time,
+        'location': auction.location,
+        'circulation_entry_deadline': auction.circulation_entry_deadline,
+        'circulation_comment_deadline': auction.circulation_comment_deadline,
+        'registration_entry_deadline': auction.registration_entry_deadline,
+        'registration_comment_deadline': auction.registration_comment_deadline,
+        'created_at': auction.created_at.isoformat() if auction.created_at else None,
+        'updated_at': auction.updated_at.isoformat() if auction.updated_at else None,
+        'auction_objects': auction_objects_list
+    }
+    
+    return auction_dict
 
 
 @router.get("/upcoming/", response_model=AuctionList)

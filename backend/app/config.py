@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     
     # Database
     database_url: str = Field(
-        default="postgresql://postgres:[YOUR-PASSWORD]@db.hwyuvjamgcawjcpsitrj.supabase.co:5432/postgres",
+        default="postgresql+asyncpg://postgres:KkpNGV01croeemDa@db.hwyuvjamgcawjcpsitrj.supabase.co:5432/postgres",
         description="PostgreSQL database URL"
     )
     
