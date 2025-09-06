@@ -126,7 +126,7 @@ async def _process_publication_data(pub_data: Dict[str, Any]):
                 # Create auction objects
                 for obj_data in auction_data.get('auction_objects', []):
                     auction_object = AuctionObject(
-                        id=obj_data['id'],
+                        id=obj_data.get('id', str(uuid.uuid4())),
                         parcel_number=obj_data.get('parcel_number'),
                         property_number=obj_data.get('property_number'),
                         surface_area=obj_data.get('surface_area'),
@@ -146,6 +146,17 @@ async def _process_publication_data(pub_data: Dict[str, Any]):
             
             # Create debtors
             for debtor_data in pub_data.get('debtors', []):
+                # Handle address - convert dict to string if needed
+                address = debtor_data.get('address')
+                if isinstance(address, dict):
+                    # Convert address dict to string
+                    address_parts = []
+                    if address.get('street'):
+                        address_parts.append(address['street'])
+                    if address.get('house_number'):
+                        address_parts.append(address['house_number'])
+                    address = ' '.join(address_parts) if address_parts else None
+                
                 debtor = Debtor(
                     id=debtor_data['id'],
                     debtor_type=DebtorType(debtor_data.get('debtor_type', 'person')),
@@ -154,7 +165,7 @@ async def _process_publication_data(pub_data: Dict[str, Any]):
                     date_of_birth=debtor_data.get('date_of_birth'),
                     country_of_origin=debtor_data.get('country_of_origin'),
                     residence_type=debtor_data.get('residence', {}).get('select_type'),
-                    address=debtor_data.get('address'),
+                    address=address,
                     city=debtor_data.get('city'),
                     postal_code=debtor_data.get('postal_code'),
                     legal_form=debtor_data.get('legal_form'),
